@@ -1,0 +1,9 @@
+/dist
+/*.egg
+/*.egg-info
+*.pyc
+/venv
+*.log
+/.ipynb_checkpoints
+*.ipynb
+*.swp
