@@ -1,0 +1,3 @@
+#update setup.py to new version
+python setup.py sdist bdist_wheel --universal
+twine upload dist/*

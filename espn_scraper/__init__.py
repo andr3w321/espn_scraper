@@ -6,18 +6,25 @@ from dateutil.relativedelta import relativedelta
 import datetime
 import os.path
 BASE_URL = "http://www.espn.com"
-DATE_LEAGUES = ["mlb","nba","ncb"]
+DATE_LEAGUES = ["mlb","nba","ncb","wcb","wnba"]
 WEEK_LEAGUES = ["nfl","ncf"]
 NCB_GROUPS = [50,55,56,100]
+WCB_GROUPS = [50,55,100]
 
 ''' Return a list of supported leagues '''
 def get_leagues():
-    return ["nfl","mlb","nba","ncf","ncb"]
+    return ["nfl","mlb","nba","ncf","ncb","wcb","wnba"]
 
 ''' Returns a list of teams with ids and names '''
 def get_teams(league, driver):
+    if league == "wcb":
+        league = "womens-college-basketball"
     driver.get(BASE_URL + "/" + league + "/teams")
-    team_links = driver.find_elements_by_css_selector("a.bi")
+    if league == "wnba":
+        selector = "b a"
+    else:
+        selector = "a.bi"
+    team_links = driver.find_elements_by_css_selector(selector)
     teams = []
     for team_link in team_links:
         teams.append({'id': team_link.get_attribute('href').split('/')[-2], 'name': team_link.text})
@@ -43,6 +50,9 @@ def get_current_scoreboard_urls(league, driver, offset=0):
         date_str = (datetime.datetime.now() + relativedelta(days=+offset)).strftime("%Y%m%d")
         if league == "ncb":
             for group in NCB_GROUPS:
+                urls.append(get_date_scoreboard_url(league, date_str, group))
+        elif league == "wcb":
+            for group in WCB_GROUPS:
                 urls.append(get_date_scoreboard_url(league, date_str, group))
         else:
             urls.append(get_date_scoreboard_url(league, date_str))
@@ -101,8 +111,10 @@ def get_season_start_end_datetimes(league, season_year, driver):
         return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year) + "0415"), driver)
     elif league == "nba":
         return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year - 1) + "1101"), driver)
-    elif league == "ncb":
+    elif league == "ncb" or league == "wcb":
         return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year - 1) + "1130"), driver)
+    elif league == "wnba":
+        return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year) + "0530"), driver)
     else:
         raise ValueError("League must be mlb, nba, ncb to get season start and end datetimes")
 

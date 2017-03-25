@@ -1,4 +1,5 @@
 /dist
+/build
 /*.egg
 /*.egg-info
 *.pyc
@@ -7,3 +8,4 @@
 /.ipynb_checkpoints
 *.ipynb
 *.swp
+/cached_json
