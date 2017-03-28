@@ -145,6 +145,9 @@ def get_calendar_list(league, season_year, driver):
 def get_league_from_scoreboard_url(url):
     return url.split('.com/')[1].split('/')[0]
 
+def get_date_from_scoreboard_url(url):
+    return url.split('/')[-1]
+
 ''' Make an http get request to ESPN to get new scoreboard json '''
 def get_new_scoreboard_json(url, driver, tries=1):
     print(url)
@@ -175,13 +178,16 @@ def get_new_scoreboard_json(url, driver, tries=1):
 
 ''' Retrieve an ESPN scoreboard JSON data, either from cache or make new request '''
 def get_scoreboard_json(url, driver, cached_json_path=None, cache_json=False, use_cached_json=False):
+    league = get_league_from_scoreboard_url(url)
+    if league == "womens-college-basketball":
+        league = "wcb"
+    # for wnba we'll use a different api to retrieve game data
+    elif league == "wnba":
+        url = get_sportscenter_api_url("basketball", league, get_date_from_scoreboard_url(url))
     # add slash if necessary to cached_json_path
     if cached_json_path != None:
         if cached_json_path[-1] != "/":
             cached_json_path += "/"
-        league = get_league_from_scoreboard_url(url)
-        if league == "womens-college-basketball":
-            league = "wcb"
         dir_path = cached_json_path + "/" + league + "/"
         # create a league directory in cached_json if doesn't already exist
         if not os.path.exists(dir_path):
@@ -195,8 +201,19 @@ def get_scoreboard_json(url, driver, cached_json_path=None, cache_json=False, us
                 data = json.load(json_data)
             found_cached_json = True
     if found_cached_json == False:
-        data = get_new_scoreboard_json(url, driver)
+        if league == "wnba":
+            data = get_new_sportscenter_api_json(url, driver)
+        else:
+            data = get_new_scoreboard_json(url, driver)
         if cache_json:
             with open(filename, 'w') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
     return data
+
+def get_sportscenter_api_url(sport, league, dates):
+    return "http://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
+
+def get_new_sportscenter_api_json(url, driver):
+    print(url)
+    driver.get(url)
+    return json.loads(driver.find_element_by_tag_name('pre').text)

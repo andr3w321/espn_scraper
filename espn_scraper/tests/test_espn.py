@@ -43,5 +43,6 @@ class TestEspn(TestCase):
         assert(len(data['events']) == 3)
     def test_wnba_scorebaord(self):
         data = espn.get_scoreboard_json("http://www.espn.com/wnba/scoreboard/_/date/20160710", self.driver)
-        assert(len(data['events']) == 5)
+        # should redirect to different url
+        assert(len(data['content']) == 5)
 
