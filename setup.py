@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='espn_scraper',
-      version='0.12',
+      version='0.13',
       description='ESPN scraper for major sports',
       url='http://github.com/andr3w321/espn_scraper',
       author='Andrew Rennhack',
@@ -9,6 +9,7 @@ setup(name='espn_scraper',
       license='MIT',
       install_requires=[
           'pytz',
+          'python-dateutil'
       ],
       test_suite='nose.collector',
       tests_require=['nose'],

@@ -5,11 +5,24 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 import datetime
 import os.path
+import time
 BASE_URL = "http://www.espn.com"
 DATE_LEAGUES = ["mlb","nba","ncb","wcb","wnba"]
 WEEK_LEAGUES = ["nfl","ncf"]
 NCB_GROUPS = [50,55,56,100]
 WCB_GROUPS = [50,55,100]
+
+def get_date_leagues():
+    return DATE_LEAGUES
+
+def get_week_leagues():
+    return WEEK_LEAGUES
+
+def get_ncb_groups():
+    return NCB_GROUPS
+
+def get_wcb_groups():
+    return WCB_GROUPS
 
 ''' Return a list of supported leagues '''
 def get_leagues():
@@ -32,6 +45,8 @@ def get_teams(league, driver):
 
 ''' Return a scoreboard url for a league that uses dates (nonfootball)'''
 def get_date_scoreboard_url(league, date, group=None):
+    if league == "wcb":
+        league = "womens-college-basketball"
     if group == None:
         return BASE_URL + "/" + league + "/scoreboard/_/date/" + date
     else:
@@ -127,21 +142,29 @@ def get_calendar_list(league, season_year, driver):
     else:
         raise ValueError("League must be nfl,ncf to get calendar list")
 
+def get_league_from_scoreboard_url(url):
+    return url.split('.com/')[1].split('/')[0]
+
 ''' Make an http get request to ESPN to get new scoreboard json '''
-def get_new_scoreboard_json(url, driver):
+def get_new_scoreboard_json(url, driver, tries=1):
     print(url)
     driver.get(url)
-    driver.implicitly_wait(1)
+    # TODO refactor to implicit waits, for now time.sleep works fine
+    time.sleep(0.1)
     script_text = re.search(r'window\.espn\.scoreboardData\s*=.*<\/script>', driver.page_source)
-    seconds = 1
+    tenth_seconds = 1
     timeout = 15
     # if still none, wait up to timeout seconds to try to find scoreboardData
     while script_text is None:
-        driver.implicitly_wait(1)
+        time.sleep(0.1)
         script_text = re.search(r'window\.espn\.scoreboardData\s*=.*<\/script>', driver.page_source)
-        seconds += 1
-        if seconds > timeout:
-            raise ValueError("Couldn't find scoreboard JSON data after {} seconds at {}".format(timeout, url))
+        tenth_seconds += 1
+        if tenth_seconds / 10 > timeout:
+            if tries < 3:
+                print("retrying")
+                get_new_scoreboard_json(url, driver, tries+1)
+            else:
+                raise ValueError("Couldn't find scoreboard JSON data after {} seconds and {} tries at {}".format(timeout, tries, url))
     script_text = script_text.group(0)
 
     # split text based on first equal sign and remove trailing script tag and semicolon
@@ -156,7 +179,15 @@ def get_scoreboard_json(url, driver, cached_json_path=None, cache_json=False, us
     if cached_json_path != None:
         if cached_json_path[-1] != "/":
             cached_json_path += "/"
-        filename = cached_json_path + url.replace('/','-') + ".json"
+        league = get_league_from_scoreboard_url(url)
+        if league == "womens-college-basketball":
+            league = "wcb"
+        dir_path = cached_json_path + "/" + league + "/"
+        # create a league directory in cached_json if doesn't already exist
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        # create filename with / replaced with -
+        filename = dir_path + url.replace('/','-') + ".json"
     found_cached_json = False
     if use_cached_json:
         if os.path.isfile(filename):

@@ -6,12 +6,14 @@ import json
 def ppjson(data):
     print(json.dumps(data, indent=2, sort_keys=True))
 
-driver = webdriver.PhantomJS(service_args=['--load-images=no'])
+driver = webdriver.Chrome()
 
 leagues = espn.get_leagues()
 print(leagues)
 for league in leagues:
-    print(league, len(espn.get_teams(league, driver)))
+    teams = espn.get_teams(league, driver)
+    print(teams)
+    print(league, len(teams))
 
 scoreboard_urls = espn.get_all_scoreboard_urls("nfl", 2016, driver)
 for scoreboard_url in scoreboard_urls:
