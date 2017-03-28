@@ -153,7 +153,7 @@ def get_new_scoreboard_json(url, driver, tries=1):
     time.sleep(0.1)
     script_text = re.search(r'window\.espn\.scoreboardData\s*=.*<\/script>', driver.page_source)
     tenth_seconds = 1
-    timeout = 15
+    timeout = 10
     # if still none, wait up to timeout seconds to try to find scoreboardData
     while script_text is None:
         time.sleep(0.1)
