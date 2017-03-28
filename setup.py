@@ -9,7 +9,10 @@ setup(name='espn_scraper',
       license='MIT',
       install_requires=[
           'pytz',
-          'python-dateutil'
+          'python-dateutil',
+          'requests',
+          'bs4',
+          'lxml'
       ],
       test_suite='nose.collector',
       tests_require=['nose'],

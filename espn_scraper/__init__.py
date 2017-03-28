@@ -6,11 +6,22 @@ from dateutil.relativedelta import relativedelta
 import datetime
 import os.path
 import time
+import requests
+from bs4 import BeautifulSoup
 BASE_URL = "http://www.espn.com"
 DATE_LEAGUES = ["mlb","nba","ncb","wcb","wnba"]
 WEEK_LEAGUES = ["nfl","ncf"]
 NCB_GROUPS = [50,55,56,100]
 WCB_GROUPS = [50,55,100]
+
+''' Get a url and return the request, try it up to 3 times if it fails initially'''
+def retry_request(url):
+    session = requests.Session()
+    session.mount("http://", requests.adapters.HTTPAdapter(max_retries=3))
+    return session.get(url=url)
+
+def get_soup(res):
+    return BeautifulSoup(res.text, "lxml")
 
 def get_date_leagues():
     return DATE_LEAGUES
@@ -26,7 +37,7 @@ def get_wcb_groups():
 
 ''' Return a list of supported leagues '''
 def get_leagues():
-    return ["nfl","mlb","nba","ncf","ncb","wcb","wnba"]
+    return ["nfl","mlb","nba","ncf","ncb","womens-college-basketball","wnba"]
 
 ''' Returns a list of teams with ids and names '''
 def get_teams(league, driver):
@@ -151,6 +162,66 @@ def get_league_from_scoreboard_url(url):
 def get_date_from_scoreboard_url(url):
     return url.split('/')[-1]
 
+''' Build a full filename with directories for given league, data_type and url'''
+def get_filename(cached_json_path, league, data_type, url):
+    # add slash if necessary to cached_json_path
+    if cached_json_path[-1] != "/":
+        cached_json_path += "/"
+    dir_path = cached_json_path + "/" + league + "/" + data_type + "/"
+    # create a league directory and data_type directory in cached_json if doesn't already exist
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    # create filename with / replaced with |
+    return dir_path + url.replace('/','|') + ".json"
+
+''' Return cached json if use_cached_json is True, else return None '''
+def get_cached_json(use_cached_json, filename):
+    data = None
+    if use_cached_json:
+        if os.path.isfile(filename):
+            with open(filename) as json_data:
+                data = json.load(json_data)
+    return data
+
+''' Retrieve an ESPN scoreboard JSON data, either from cache or make new request '''
+def get_json(url, data_type, driver=None, cached_json_path=None, cache_json=False, use_cached_json=False):
+    league = get_league_from_scoreboard_url(url)
+    if league == "womens-college-basketball":
+        league = "wcb"
+    if data_type == "scoreboards":
+        # for wnba we'll use a different api to retrieve game data
+        if league == "wnba":
+            url = get_sportscenter_api_url("basketball", league, get_date_from_scoreboard_url(url))
+    if cached_json_path != None:
+        filename = get_filename(cached_json_path, league, data_type)
+    data = get_cached_json(use_cached_json, filename, url)
+    if data == None:
+        if data_type == "scoreboards":
+            if league == "wnba":
+                data = get_new_sportscenter_api_json(url, driver)
+            else:
+                data = get_new_scoreboard_json(url, driver)
+        elif data_type == "boxscores":
+            pass
+        elif data_type == "playbyplays":
+            pass
+        if cache_json:
+            with open(filename, 'w') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
+    return data
+
+def get_scoreboard_json(url, driver, cached_json_path=None, cache_json=False, use_cached_json=False):
+    get_json(url, "scoreboards", driver, cached_json_path, cache_json, use_cached_json)
+
+def get_boxscore_json(url, cached_json_path=None, cache_json=False, use_cached_json=False):
+    get_json(url, "boxscores", driver=None, cached_json_path, cache_json, use_cached_json)
+
+def get_playbyplay_json(url, cached_json_path=None, cache_json=False, use_cached_json=False):
+    get_json(url, "playbyplays", driver=None, cached_json_path, cache_json, use_cached_json)
+
+def get_sportscenter_api_url(sport, league, dates):
+    return "http://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
+
 ''' Make an http get request to ESPN to get new scoreboard json '''
 def get_new_scoreboard_json(url, driver, tries=1):
     print(url)
@@ -179,44 +250,23 @@ def get_new_scoreboard_json(url, driver, tries=1):
     json_text = json_text.split("};")[0] + "}"
     return json.loads(json_text)
 
-''' Retrieve an ESPN scoreboard JSON data, either from cache or make new request '''
-def get_scoreboard_json(url, driver, cached_json_path=None, cache_json=False, use_cached_json=False):
-    league = get_league_from_scoreboard_url(url)
-    if league == "womens-college-basketball":
-        league = "wcb"
-    # for wnba we'll use a different api to retrieve game data
-    elif league == "wnba":
-        url = get_sportscenter_api_url("basketball", league, get_date_from_scoreboard_url(url))
-    # add slash if necessary to cached_json_path
-    if cached_json_path != None:
-        if cached_json_path[-1] != "/":
-            cached_json_path += "/"
-        dir_path = cached_json_path + "/" + league + "/"
-        # create a league directory in cached_json if doesn't already exist
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        # create filename with / replaced with |
-        filename = dir_path + url.replace('/','|') + ".json"
-    found_cached_json = False
-    if use_cached_json:
-        if os.path.isfile(filename):
-            with open(filename) as json_data:
-                data = json.load(json_data)
-            found_cached_json = True
-    if found_cached_json == False:
-        if league == "wnba":
-            data = get_new_sportscenter_api_json(url, driver)
-        else:
-            data = get_new_scoreboard_json(url, driver)
-        if cache_json:
-            with open(filename, 'w') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
-    return data
-
-def get_sportscenter_api_url(sport, league, dates):
-    return "http://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
-
-def get_new_sportscenter_api_json(url, driver):
+def get_new_sportscenter_api_json(url):
     print(url)
-    driver.get(url)
-    return json.loads(driver.find_element_by_tag_name('pre').text)
+    soup = get_soup(retry_request(url))
+    return json.loads(soup.find("pre").text)
+
+def get_game_url(url_type, league, espn_id):
+    valid_url_types = ["summary", "recap", "boxscore", "playbyplay", "conversation"]
+    if url_type not in valid_url_types:
+        raise ValueError("Unknown url_type for get_game_url. Valid url_types are {}".format(valid_url_types))
+    if league == "wcb":
+        league = "womens-college-basketball"
+    return "{}/{}/{}?gameId={}&xhr=1".format(BASE_URL, league, url_type, espn_id)
+
+def get_new_boxscore_json(url):
+    print(url)
+    return retry_request(url).json()
+
+def get_new_playbyplay_json(url):
+    print(url)
+    return retry_request(url).json()
