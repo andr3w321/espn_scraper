@@ -94,9 +94,7 @@ def get_current_scoreboard_urls(league, driver, offset=0):
 def get_all_scoreboard_urls(league, season_year, driver):
     urls = []
     if league in DATE_LEAGUES:
-        start_end_datetimes = get_season_start_end_datetimes(league, season_year, driver)
-        start_datetime = parser.parse(start_end_datetimes['calendarStartDate'])
-        end_datetime = parser.parse(start_end_datetimes['calendarEndDate'])
+        start_datetime, end_datetime = get_season_start_end_datetimes(league, season_year, driver)
         while start_datetime < end_datetime:
             if league == "ncb":
                 for group in NCB_GROUPS:
@@ -120,8 +118,8 @@ def get_all_scoreboard_urls(league, season_year, driver):
 
 def get_season_start_end_datetimes_helper(url, driver):
     scoreboard = get_scoreboard_json(url, driver)
-    return {'calendarStartDate': scoreboard['leagues'][0]['calendarStartDate'], 
-            'calendarEndDate': scoreboard['leagues'][0]['calendarEndDate']}
+    return parser.parse(scoreboard['leagues'][0]['calendarStartDate']), 
+            parser.parse(scoreboard['leagues'][0]['calendarEndDate'])
 
 ''' Guess a random date in a leagues season and return its calendar start and end dates, only non football adheres to this format'''
 def get_season_start_end_datetimes(league, season_year, driver):
@@ -132,9 +130,11 @@ def get_season_start_end_datetimes(league, season_year, driver):
     elif league == "ncb" or league == "wcb":
         return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year - 1) + "1130"), driver)
     elif league == "wnba":
-        return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year) + "0530"), driver)
+        # hardcode start end dates, assumed to be May 1 thru Oct 31
+        return datetime.datetime(season_year,5,1, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc),
+                datetime.datetime(season_year,10,31, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
     else:
-        raise ValueError("League must be mlb, nba, ncb to get season start and end datetimes")
+        raise ValueError("League must be mlb, nba, ncb, wcb, wnba to get season start and end datetimes")
 
 ''' Return a calendar list, only football adheres to this format '''
 def get_calendar_list(league, season_year, driver):
@@ -195,8 +195,8 @@ def get_scoreboard_json(url, driver, cached_json_path=None, cache_json=False, us
         # create a league directory in cached_json if doesn't already exist
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
-        # create filename with / replaced with -
-        filename = dir_path + url.replace('/','-') + ".json"
+        # create filename with / replaced with |
+        filename = dir_path + url.replace('/','|') + ".json"
     found_cached_json = False
     if use_cached_json:
         if os.path.isfile(filename):
