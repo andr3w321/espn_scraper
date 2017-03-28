@@ -101,6 +101,9 @@ def get_all_scoreboard_urls(league, season_year, driver):
             if league == "ncb":
                 for group in NCB_GROUPS:
                     urls.append(get_date_scoreboard_url(league, start_datetime.strftime("%Y%m%d"), group))
+            elif league == "wcb":
+                for group in WCB_GROUPS:
+                    urls.append(get_date_scoreboard_url(league, start_datetime.strftime("%Y%m%d"), group))
             else:
                 urls.append(get_date_scoreboard_url(league, start_datetime.strftime("%Y%m%d")))
             start_datetime += relativedelta(days=+1)
