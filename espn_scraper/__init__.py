@@ -175,7 +175,7 @@ def get_calendar(league, date_or_season_year):
     elif league in get_date_leagues():
         url = get_date_scoreboard_url(league, date_or_season_year)
     # TODO use cached replies for older urls
-    return get_json(url)['content']['calendar']
+    return get_json(url, "scoreboards")['content']['calendar']
 
 ''' Build a full filename with directories for given league, data_type and url'''
 def get_filename(cached_json_path, league, data_type, url):

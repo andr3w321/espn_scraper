@@ -12,63 +12,59 @@ This library will scrape espn.com scoreboards for NFL, MLB, NBA, NCAAF, NCAAB.  
 ```
 $python
 >>> import espn_scraper as espn
->>> from selenium import webdriver
 ```
-
-### Pick a webdriver to use.  I prefer phantomjs.
-`>>> driver = webdriver.PhantomJS(service_args=['--load-images=no'])`
 
 ### View supported leagues
 ```
->>> print(espn.get_leagues())
-['nfl', 'mlb', 'nba', 'ncf', 'ncb']
+>>> espn.get_leagues()
+['nfl', 'ncf', 'mlb', 'nba', 'ncb', 'ncw', 'wnba']
 ```
 
 ### Get all scoreboard urls for a league in a given year. It will make one get request to ESPN.com and display the URL
 ```
->>> scoreboard_urls = espn.get_all_scoreboard_urls("nfl", 2016, driver)
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/1
+>>> scoreboard_urls = espn.get_all_scoreboard_urls("nfl", 2016)
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/1?xhr=1
 ```
 
 ### Save all scoreboard data from these urls in the cached_json_data folder
 ```
 >>> for scoreboard_url in scoreboard_urls:
-...     data = espn.get_scoreboard_json(scoreboard_url, driver, cached_json_path="cached_json", cache_json=True, use_cached_json=True)
+...     data = espn.get_json(scoreboard_url, "scoreboards")
 ... 
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/1
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/2
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/3
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/4
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/5
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/1
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/2
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/3
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/4
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/5
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/6
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/7
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/8
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/9
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/10
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/11
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/12
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/13
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/14
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/15
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/16
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/17
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/1
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/2
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/3
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/4
-http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/5
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/1?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/2?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/3?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/4?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/1/week/5?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/1?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/2?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/3?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/4?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/5?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/6?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/7?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/8?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/9?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/10?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/11?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/12?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/13?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/14?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/15?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/16?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/2/week/17?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/1?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/2?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/3?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/4?xhr=1
+http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/5?xhr=1
 ```
 
 ### Now that this data is saved, we can loop through it quickly to print out postseason scores for example
 ```
 >>> for scoreboard_url in scoreboard_urls:
-...     data = espn.get_scoreboard_json(scoreboard_url, driver, cached_json_path="cached_json", cache_json=True, use_cached_json=True)
-...     for event in data['events']:
+...     data = espn.get_json(scoreboard_url, "scoreboards")
+...     for event in data['content']['sbData']['events']:
 ...         if event['season']['type'] == 3:
 ...             print(event['season']['type'],
 ...                   event['season']['year'],
@@ -90,6 +86,3 @@ http://www.espn.com/nfl/scoreboard/_/year/2016/seasontype/3/week/5
 3 2016 NFC 13 AFC 20
 3 2016 ATL 28 NE 34
 ```
-
-### Quit webdriver
-`>>> driver.quit()`

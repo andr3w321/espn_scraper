@@ -41,3 +41,7 @@ class TestEspn(TestCase):
         # should redirect to different url
         assert(len(data['content']) == 5)
 
+    def test_get_all_2016_nfl_scoreboard_urls(self):
+        scoreboards = scoreboards = espn.get_all_scoreboard_urls("nfl", 2016)
+        assert(len(scoreboards) == 27)
+
