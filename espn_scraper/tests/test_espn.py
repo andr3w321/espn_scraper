@@ -87,3 +87,10 @@ class TestEspn(TestCase):
         home_score = int(data.select('.team-info span')[1].text.strip())
         self.assertEqual(away_score, 85)
         self.assertEqual(home_score, 94)
+    def test_nhl_boxscore(self):
+        data = espn.get_url(espn.get_game_url("boxscore", "nhl", 400885533))
+        away_score = int(data.select('.team-info span')[0].text.strip())
+        home_score = int(data.select('.team-info span')[1].text.strip())
+        self.assertEqual(away_score, 5)
+        self.assertEqual(home_score, 1)
+

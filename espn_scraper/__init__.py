@@ -62,19 +62,6 @@ def get_sport(league):
     elif league in ["nhl"]:
         return "hockey"
 
-''' Returns a list of teams with ids and names '''
-def get_teams(league):
-    soup = get_soup(retry_request(BASE_URL + "/" + league + "/teams"))
-    if league == "wnba":
-        selector = "b a"
-    else:
-        selector = "a.bi"
-    team_links = soup.select(selector)
-    teams = []
-    for team_link in team_links:
-        teams.append({'id': team_link['href'].split('/')[-2], 'name': team_link.text})
-    return teams
-
 ## Get urls
 def get_sportscenter_api_url(sport, league, dates):
     return "http://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
@@ -179,7 +166,7 @@ def get_date_from_scoreboard_url(url):
 ''' Guess and return the data_type based on the url '''
 def get_data_type_from_url(url):
     data_type = None
-    valid_data_types = ["scoreboard", "summary", "recap", "boxscore", "playbyplay", "conversation"]
+    valid_data_types = ["scoreboard", "summary", "recap", "boxscore", "playbyplay", "conversation", "gamecast"]
     for valid_data_type in valid_data_types:
         if valid_data_type in url:
             data_type = valid_data_type
@@ -196,7 +183,7 @@ def get_filename_ext(filename):
     else:
         raise ValueError("Uknown filename extension for {}".format(filename))
 
-## Get JSON and helpers
+## Get requests helpers
 def get_season_start_end_datetimes_helper(url):
     # TODO use cached replies if scoreboard url is older than 1 year
     scoreboard = get_url(url)
@@ -218,15 +205,6 @@ def get_season_start_end_datetimes(league, season_year):
         return datetime.datetime(season_year-1,10,1, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc), datetime.datetime(season_year,6,30, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
     else:
         raise ValueError("League must be {} to get season start and end datetimes".format(get_date_leagues()))
-
-''' Return a calendar for a league and season_year'''
-def get_calendar(league, date_or_season_year):
-    if league in get_week_leagues():
-        url = get_week_scoreboard_url(league, date_or_season_year, 2, 1)
-    elif league in get_date_leagues():
-        url = get_date_scoreboard_url(league, date_or_season_year)
-    # TODO use cached replies for older urls
-    return get_url(url)['content']['calendar']
 
 ''' Get a filename extension (either .html or .json depending on league and data_type) '''
 def create_filename_ext(league, data_type):
@@ -259,6 +237,29 @@ def get_cached(filename):
             data = BeautifulSoup(open(filename), "lxml") 
     return data
 
+## Get requests
+''' Returns a list of teams with ids and names '''
+def get_teams(league):
+    soup = get_soup(retry_request(BASE_URL + "/" + league + "/teams"))
+    if league == "wnba":
+        selector = "b a"
+    else:
+        selector = "a.bi"
+    team_links = soup.select(selector)
+    teams = []
+    for team_link in team_links:
+        teams.append({'id': team_link['href'].split('/')[-2], 'name': team_link.text})
+    return teams
+
+''' Return a calendar for a league and season_year'''
+def get_calendar(league, date_or_season_year):
+    if league in get_week_leagues():
+        url = get_week_scoreboard_url(league, date_or_season_year, 2, 1)
+    elif league in get_date_leagues():
+        url = get_date_scoreboard_url(league, date_or_season_year)
+    # TODO use cached replies for older urls
+    return get_url(url)['content']['calendar']
+
 ''' Retrieve an ESPN JSON data or HTML BeautifulSoup, either from cache or make new request '''
 def get_url(url, cached_path=None):
     data_type = get_data_type_from_url(url)
@@ -285,3 +286,4 @@ def get_url(url, cached_path=None):
                 with open(filename, 'w') as f:
                     f.write(data.prettify())
     return data
+
