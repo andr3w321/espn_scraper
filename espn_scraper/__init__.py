@@ -24,9 +24,13 @@ def get_new_json(url):
     print(url)
     return retry_request(url).json()
 
+def get_new_html_soup(url):
+    print(url)
+    return get_soup(retry_request(url))
+
 ## Get constants
 def get_date_leagues():
-    return ["mlb","nba","ncb","ncw","wnba"]
+    return ["mlb","nba","ncb","ncw","wnba","nhl"]
 
 def get_week_leagues():
     return ["nfl","ncf"]
@@ -40,6 +44,23 @@ def get_ncw_groups():
 ''' Return a list of supported leagues '''
 def get_leagues():
     return get_week_leagues() + get_date_leagues()
+
+def get_html_boxscore_leagues():
+    return ["wnba", "mlb", "nhl"]
+
+''' Scoreboard json isn't easily available for some leagues, have to grab the game_ids from sportscenter_api url '''
+def get_no_scoreboard_json_leagues():
+    return ["wnba", "nhl"]
+
+def get_sport(league):
+    if league in ["nba","wnba","ncb","ncw"]:
+        return "basketball"
+    elif league in ["mlb"]:
+        return "baseball"
+    elif league in ["nfl","ncf"]:
+        return "football"
+    elif league in ["nhl"]:
+        return "hockey"
 
 ''' Returns a list of teams with ids and names '''
 def get_teams(league):
@@ -61,12 +82,15 @@ def get_sportscenter_api_url(sport, league, dates):
 ''' Return a scoreboard url for a league that uses dates (nonfootball)'''
 def get_date_scoreboard_url(league, date, group=None):
     if league in get_date_leagues():
-        if group == None:
-            return "{}/{}/scoreboard/_/date/{}?xhr=1".format(BASE_URL, league, date)
+        if league == "nhl":
+            return "{}/{}/scoreboard?date={}".format(BASE_URL, league, date)
         else:
-            return "{}/{}/scoreboard/_/group/{}/date/{}?xhr=1".format(BASE_URL, league, group, date)
+            if group == None:
+                return "{}/{}/scoreboard/_/date/{}?xhr=1".format(BASE_URL, league, date)
+            else:
+                return "{}/{}/scoreboard/_/group/{}/date/{}?xhr=1".format(BASE_URL, league, group, date)
     else:
-        raise ValueError("League must be {} to get week scoreboard url".format(get_date_leagues()))
+        raise ValueError("League must be {} to get date scoreboard url".format(get_date_leagues()))
 
 ''' Return a scoreboard url for a league that uses weeks (football)'''
 def get_week_scoreboard_url(league, season_year, season_type, week):
@@ -76,7 +100,7 @@ def get_week_scoreboard_url(league, season_year, season_type, week):
         raise ValueError("League must be {} to get week scoreboard url".format(get_week_leagues()))
 
 def get_game_url(url_type, league, espn_id):
-    valid_url_types = ["summary", "recap", "boxscore", "playbyplay", "conversation"]
+    valid_url_types = ["summary", "recap", "boxscore", "playbyplay", "conversation", "gamecast"]
     if url_type not in valid_url_types:
         raise ValueError("Unknown url_type for get_game_url. Valid url_types are {}".format(valid_url_types))
     return "{}/{}/{}?gameId={}&xhr=1".format(BASE_URL, league, url_type, espn_id)
@@ -141,17 +165,41 @@ def get_all_scoreboard_urls(league, season_year):
     else:
         raise ValueError("Unknown league for get_all_scoreboard_urls")
 
-## Get stuff from URLs
+## Get stuff from URL or filenames
 def get_league_from_url(url):
     return url.split('.com/')[1].split('/')[0]
 
 def get_date_from_scoreboard_url(url):
-    return url.split('/')[-1].split('?')[0]
+    league = get_league_from_url(url)
+    if league == "nhl":
+        return url.split("?date=")[1].split("&")[0]
+    else:
+        return url.split('/')[-1].split('?')[0]
+
+''' Guess and return the data_type based on the url '''
+def get_data_type_from_url(url):
+    data_type = None
+    valid_data_types = ["scoreboard", "summary", "recap", "boxscore", "playbyplay", "conversation"]
+    for valid_data_type in valid_data_types:
+        if valid_data_type in url:
+            data_type = valid_data_type
+            break
+    if data_type == None:
+        raise ValueError("Unknown data_type for url. Url must contain one of {}".format(valid_data_types))
+    return data_type
+
+def get_filename_ext(filename):
+    if filename.endswith(".json"):
+        return "json"
+    elif filename.endswith(".html"):
+        return "html"
+    else:
+        raise ValueError("Uknown filename extension for {}".format(filename))
 
 ## Get JSON and helpers
 def get_season_start_end_datetimes_helper(url):
     # TODO use cached replies if scoreboard url is older than 1 year
-    scoreboard = get_json(url, "scoreboards")
+    scoreboard = get_url(url)
     return parser.parse(scoreboard['content']['sbData']['leagues'][0]['calendarStartDate']), parser.parse(scoreboard['content']['sbData']['leagues'][0]['calendarEndDate'])
 
 ''' Guess a random date in a leagues season and return its calendar start and end dates, only non football adheres to this format'''
@@ -163,8 +211,11 @@ def get_season_start_end_datetimes(league, season_year):
     elif league == "ncb" or league == "ncw":
         return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year - 1) + "1130"))
     elif league == "wnba":
-        # hardcode start end dates, assumed to be May 1 thru Oct 31
+        # hardcode wnba start end dates, assumed to be May 1 thru Oct 31
         return datetime.datetime(season_year,5,1, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc), datetime.datetime(season_year,10,31, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
+    elif league == "nhl":
+        # hardcode nhl start end dates, assumed to be Oct 1 thru June 30
+        return datetime.datetime(season_year-1,10,1, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc), datetime.datetime(season_year,6,30, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
     else:
         raise ValueError("League must be {} to get season start and end datetimes".format(get_date_leagues()))
 
@@ -175,7 +226,14 @@ def get_calendar(league, date_or_season_year):
     elif league in get_date_leagues():
         url = get_date_scoreboard_url(league, date_or_season_year)
     # TODO use cached replies for older urls
-    return get_json(url, "scoreboards")['content']['calendar']
+    return get_url(url)['content']['calendar']
+
+''' Get a filename extension (either .html or .json depending on league and data_type) '''
+def create_filename_ext(league, data_type):
+    if league in get_html_boxscore_leagues() and data_type != "scoreboard":
+        return "html"
+    else:
+        return "json"
 
 ''' Build a full filename with directories for given league, data_type and url'''
 def get_filename(cached_json_path, league, data_type, url):
@@ -187,40 +245,43 @@ def get_filename(cached_json_path, league, data_type, url):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     # create filename with / replaced with |
-    return dir_path + url.replace('/','|') + ".json"
+    return dir_path + url.replace('/','|') + "." + create_filename_ext(league, data_type)
 
 ''' Return cached json if it exists '''
-def get_cached_json(filename):
+def get_cached(filename):
     data = None
     if os.path.isfile(filename):
-        with open(filename) as json_data:
-            data = json.load(json_data)
+        ext = get_filename_ext(filename)
+        if ext == "json":
+            with open(filename) as json_data:
+                data = json.load(json_data)
+        elif ext == "html":
+            data = BeautifulSoup(open(filename), "lxml") 
     return data
 
-''' Retrieve an ESPN scoreboard JSON data, either from cache or make new request '''
-def get_json(url, data_type, cached_json_path=None, cache_json=False, use_cached_json=False):
-    valid_data_types = ["scoreboards", "boxscores", "playbyplays"]
-    if data_type not in valid_data_types:
-        raise ValueError("Unknown data_type for get_json. Valid url_types are {}".format(valid_data_types))
+''' Retrieve an ESPN JSON data or HTML BeautifulSoup, either from cache or make new request '''
+def get_url(url, cached_path=None):
+    data_type = get_data_type_from_url(url)
     league = get_league_from_url(url)
-    if data_type == "scoreboards":
-        # for wnba we'll use a different api to retrieve game data
-        if league == "wnba":
-            url = get_sportscenter_api_url("basketball", league, get_date_from_scoreboard_url(url))
-    if cached_json_path != None:
-        filename = get_filename(cached_json_path, league, data_type, url)
-    if use_cached_json:
-        data = get_cached_json(filename)
+    if data_type == "scoreboard":
+        # for wnba and nhl we'll use a different api to retrieve game_ids and basic game data
+        if league in get_no_scoreboard_json_leagues():
+            url = get_sportscenter_api_url(get_sport(league), league, get_date_from_scoreboard_url(url))
+    if cached_path:
+        filename = get_filename(cached_path, league, data_type, url)
+        data = get_cached(filename)
     else:
         data = None
     if data == None:
-        if data_type == "scoreboards":
+        ext = create_filename_ext(league, data_type)
+        if ext == "json":
             data = get_new_json(url)
-        elif data_type == "boxscores":
-            pass
-        elif data_type == "playbyplays":
-            pass
-        if cache_json:
-            with open(filename, 'w') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
+            if cached_path:
+                with open(filename, 'w') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
+        elif ext == "html":
+            data = get_new_html_soup(url)
+            if cached_path:
+                with open(filename, 'w') as f:
+                    f.write(data.prettify())
     return data
