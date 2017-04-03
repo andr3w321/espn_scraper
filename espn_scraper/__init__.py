@@ -41,6 +41,9 @@ def get_ncb_groups():
 def get_ncw_groups():
     return [50,55,100]
 
+def get_ncf_groups():
+    return [80,81]
+
 ''' Return a list of supported leagues '''
 def get_leagues():
     return get_week_leagues() + get_date_leagues()
@@ -80,9 +83,12 @@ def get_date_scoreboard_url(league, date, group=None):
         raise ValueError("League must be {} to get date scoreboard url".format(get_date_leagues()))
 
 ''' Return a scoreboard url for a league that uses weeks (football)'''
-def get_week_scoreboard_url(league, season_year, season_type, week):
+def get_week_scoreboard_url(league, season_year, season_type, week, group=None):
     if league in get_week_leagues():
-        return "{}/{}/scoreboard/_/year/{}/seasontype/{}/week/{}?xhr=1".format(BASE_URL, league, season_year, season_type, week)
+        if group == None:
+            return "{}/{}/scoreboard/_/year/{}/seasontype/{}/week/{}?xhr=1".format(BASE_URL, league, season_year, season_type, week)
+        else:
+            return "{}/{}/scoreboard/_/group/{}/year/{}/seasontype/{}/week/{}?xhr=1".format(BASE_URL, league, group, season_year, season_type, week)
     else:
         raise ValueError("League must be {} to get week scoreboard url".format(get_week_leagues()))
 
@@ -121,7 +127,11 @@ def get_current_scoreboard_urls(league, offset=0):
             if 'entries' in season_type:
                 for entry in season_type['entries']:
                     if dt >= parser.parse(entry['startDate']) and dt <= parser.parse(entry['endDate']):
-                        urls.append(get_week_scoreboard_url(league, guessed_season_year, season_type['value'], entry['value']))
+                        if league == "ncf":
+                            for group in get_ncf_groups():
+                                urls.append(get_week_scoreboard_url(league, guessed_season_year, season_type['value'], entry['value'], group))
+                        else:
+                            urls.append(get_week_scoreboard_url(league, guessed_season_year, season_type['value'], entry['value']))
         return urls
     else:
         raise ValueError("Unknown league for get_current_scoreboard_urls")
@@ -147,7 +157,11 @@ def get_all_scoreboard_urls(league, season_year):
         for season_type in calendar:
             if 'entries' in season_type:
                 for entry in season_type['entries']:
-                    urls.append(get_week_scoreboard_url(league, season_year, season_type['value'], entry['value']))
+                    if league == "ncf":
+                        for group in get_ncf_groups():
+                            urls.append(get_week_scoreboard_url(league, season_year, season_type['value'], entry['value'], group))
+                    else:
+                        urls.append(get_week_scoreboard_url(league, season_year, season_type['value'], entry['value']))
         return urls
     else:
         raise ValueError("Unknown league for get_all_scoreboard_urls")
