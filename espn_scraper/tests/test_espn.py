@@ -5,6 +5,15 @@ def boxscore_helper(self, league, espn_id):
     data = espn.get_url(espn.get_game_url("boxscore", league, espn_id))
     self.assertEqual(data['gameId'], espn_id)
 
+def standings_helper(self, league, season_year, expected_n_teams):
+    standings = espn.get_standings(league, season_year)
+    n_teams = 0
+    for conference in standings["conferences"]:
+        for division in standings["conferences"][conference]["divisions"]:
+            for team in standings["conferences"][conference]["divisions"][division]["teams"]:
+                n_teams += 1
+    self.assertEqual(n_teams, expected_n_teams)
+
 class TestEspn(TestCase):
     # leagues
     def test_get_leagues(self):
@@ -93,4 +102,23 @@ class TestEspn(TestCase):
         home_score = int(data.select('.team-info span')[1].text.strip())
         self.assertEqual(away_score, 5)
         self.assertEqual(home_score, 1)
+
+    # standings
+    def test_nfl_2016_standings(self):
+        standings_helper(self, "nfl", 2016, 32)
+    def test_ncf_2016_standings(self):
+        standings_helper(self, "ncf", 2016, 128)
+    def test_mlb_2016_standings(self):
+        standings_helper(self, "mlb", 2016, 30)
+    def test_nba_2016_standings(self):
+        standings_helper(self, "nba", 2016, 30)
+    def test_ncb_2016_standings(self):
+        standings_helper(self, "ncb", 2016, 351)
+    def test_ncw_2016_standings(self):
+        # includes 64 NCAA tournament standings
+        standings_helper(self, "ncw", 2016, 349 + 64)
+    def test_wnba_2016_standings(self):
+        standings_helper(self, "wnba", 2016, 12)
+    def test_nhl_2016_standings(self):
+        standings_helper(self, "nhl", 2016, 30)
 
