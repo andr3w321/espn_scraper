@@ -222,8 +222,8 @@ def get_season_start_end_datetimes(league, season_year):
     elif league == "ncb" or league == "ncw":
         return get_season_start_end_datetimes_helper(get_date_scoreboard_url(league, str(season_year - 1) + "1130"))
     elif league == "wnba":
-        # hardcode wnba start end dates, assumed to be May 1 thru Oct 31
-        return datetime.datetime(season_year,5,1, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc), datetime.datetime(season_year,10,31, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
+        # hardcode wnba start end dates, assumed to be April 20 thru Oct 31
+        return datetime.datetime(season_year,4,20, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc), datetime.datetime(season_year,10,31, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
     elif league == "nhl":
         # hardcode nhl start end dates, assumed to be Oct 1 thru June 30
         return datetime.datetime(season_year-1,10,1, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc), datetime.datetime(season_year,6,30, tzinfo=pytz.timezone("US/Eastern")).astimezone(pytz.utc)
