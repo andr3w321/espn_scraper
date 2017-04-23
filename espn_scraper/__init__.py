@@ -358,6 +358,10 @@ def get_url(url, cached_path=None):
         # for wnba and nhl we'll use a different api to retrieve game_ids and basic game data
         if league in get_no_scoreboard_json_leagues():
             url = get_sportscenter_api_url(get_sport(league), league, get_date_from_scoreboard_url(url))
+    return get_cached_url(url, league, data_type, cached_path)
+
+def get_cached_url(url, league, data_type, cached_path):
+    """ get_url helper if want to specify the league and datatype (for non espn.com links) """
     if cached_path:
         filename = get_filename(cached_path, league, data_type, url)
         data = get_cached(filename)
