@@ -232,7 +232,7 @@ def get_season_start_end_datetimes(league, season_year):
 
 def create_filename_ext(league, data_type):
     """ Get a filename extension (either .html or .json depending on league and data_type) """
-    if league in get_html_boxscore_leagues() and data_type != "scoreboard":
+    if league in get_html_boxscore_leagues() and data_type == "boxscore":
         return "html"
     else:
         return "json"
