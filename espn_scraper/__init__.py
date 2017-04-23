@@ -26,8 +26,8 @@ def get_new_json(url):
     if res.status_code == 200:
         return res.json()
     else:
-        print("ERROR: ESPN", res.status_code)
-        return {"error_code": res.status_code, "error_msg": "ESPN Error"}
+        print("ERROR:", res.status_code)
+        return {"error_code": res.status_code, "error_msg": "URL Error"}
 
 def get_new_html_soup(url):
     print(url)
@@ -247,7 +247,11 @@ def get_filename(cached_json_path, league, data_type, url):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     # create filename with / replaced with |
-    return dir_path + url.replace('/','|') + "." + create_filename_ext(league, data_type)
+    filename = dir_path + url.replace('/','|')
+    ext = "." + create_filename_ext(league, data_type)
+    if filename.endswith(ext) == False:
+        filename = filename + ext
+    return filename
 
 def get_cached(filename):
     """ Return cached json if it exists """
