@@ -9,29 +9,29 @@ from bs4 import BeautifulSoup
 BASE_URL = "http://www.espn.com"
 
 ## General functions
-def retry_request(url):
+def retry_request(url, headers={}):
     """Get a url and return the request, try it up to 3 times if it fails initially"""
     session = requests.Session()
     session.mount("http://", requests.adapters.HTTPAdapter(max_retries=3))
-    res = session.get(url=url, allow_redirects=False)
+    res = session.get(url=url, allow_redirects=False, headers=headers)
     session.close()
     return res
 
 def get_soup(res):
     return BeautifulSoup(res.text, "lxml")
 
-def get_new_json(url):
+def get_new_json(url, headers={}):
     print(url)
-    res = retry_request(url)
+    res = retry_request(url, headers)
     if res.status_code == 200:
         return res.json()
     else:
         print("ERROR:", res.status_code)
         return {"error_code": res.status_code, "error_msg": "URL Error"}
 
-def get_new_html_soup(url):
+def get_new_html_soup(url, headers={}):
     print(url)
-    res = retry_request(url)
+    res = retry_request(url, headers)
     if res.status_code == 200:
         return get_soup(res)
     else:
@@ -364,7 +364,7 @@ def get_url(url, cached_path=None):
             url = get_sportscenter_api_url(get_sport(league), league, get_date_from_scoreboard_url(url))
     return get_cached_url(url, league, data_type, cached_path)
 
-def get_cached_url(url, league, data_type, cached_path):
+def get_cached_url(url, league, data_type, cached_path, headers={}):
     """ get_url helper if want to specify the league and datatype (for non espn.com links) """
     if cached_path:
         filename = get_filename(cached_path, league, data_type, url)
@@ -374,13 +374,13 @@ def get_cached_url(url, league, data_type, cached_path):
     if data == None:
         ext = create_filename_ext(league, data_type)
         if ext == "json":
-            data = get_new_json(url)
+            data = get_new_json(url, headers)
             # dont cache if got an ESPN internal 500 error
             if cached_path and "error_code" not in data:
                 with open(filename, 'w') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
         elif ext == "html":
-            data = get_new_html_soup(url)
+            data = get_new_html_soup(url, headers)
             if cached_path and "error_code" not in data:
                 with open(filename, 'w') as f:
                     f.write(data.prettify())
