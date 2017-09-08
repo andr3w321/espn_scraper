@@ -281,7 +281,7 @@ def get_teams(league):
         teams.append({'id': team_link['href'].split('/')[-2], 'name': team_link.text})
     return teams
 
-def get_standings(league, season_year):
+def get_standings(league, season_year, college_division=None):
     standings = {"conferences": {}}
     if league in ["wnba","nhl"]:
         url = "{}/{}/standings/_/year/{}".format(BASE_URL, league, season_year)
@@ -324,7 +324,14 @@ def get_standings(league, season_year):
                         team["id"] = int(c.split("-")[2])
                         standings["conferences"][conference_name]["divisions"][division]["teams"].append(team)
     elif league in ["nfl","ncf","nba","mlb"]:
-        url = "{}/{}/standings/_/season/{}/group/division".format(BASE_URL, league, season_year)
+        if college_division:
+            valid_college_divisions = ["fbs", "fcs", "d2", "d3"]
+            if college_division in valid_college_divisions:
+                url = "{}/{}/standings/_/view/{}/season/{}/group/division".format(BASE_URL, league, college_division, season_year)
+            else:
+                raise ValueError("College division must be none or {}".format(",".join(valid_college_divisions)))
+        else:
+            url = "{}/{}/standings/_/season/{}/group/division".format(BASE_URL, league, season_year)
         print(url)
         soup = get_soup(retry_request(url))
         conference_names = [x.text for x in soup.find_all("span", class_="long-caption")]
