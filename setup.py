@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='espn_scraper',
-      version='0.14.14',
+      version='0.14.15',
       description='ESPN scraper for major sports',
       url='http://github.com/andr3w321/espn_scraper',
       author='Andrew Rennhack',

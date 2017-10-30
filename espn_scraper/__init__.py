@@ -283,7 +283,7 @@ def get_teams(league):
 
 def get_standings(league, season_year, college_division=None):
     standings = {"conferences": {}}
-    if league in ["wnba","nhl"]:
+    if league in ["nhl"]:
         url = "{}/{}/standings/_/year/{}".format(BASE_URL, league, season_year)
         print(url)
         soup = get_soup(retry_request(url))
@@ -298,10 +298,15 @@ def get_standings(league, season_year, college_division=None):
                 division = tr.find("td").text
                 standings["conferences"][conference_name]["divisions"][division] = {"teams": []}
             elif "oddrow" in tr["class"] or "evenrow" in tr["class"]:
-                team_a_tag = tr.find("td").find("a")
                 team = {}
-                team["name"] = team_a_tag.text
-                team["abbr"] = team_a_tag["href"].split("name/")[1].split("/")[0].upper()
+                team_a_tag = tr.find("td").find("a")
+                if team_a_tag is None:
+                    # some teams are now defunct with no espn links
+                    team["name"] = tr.find("td").text.split(" - ")[1].strip()
+                    team["abbr"] = ""
+                else:
+                    team["name"] = team_a_tag.text
+                    team["abbr"] = team_a_tag["href"].split("name/")[1].split("/")[0].upper()
                 standings["conferences"][conference_name]["divisions"][division]["teams"].append(team)
     elif league in ["ncb","ncw"]:
         url = "{}/{}/standings/_/year/{}".format(BASE_URL, league, season_year)
@@ -323,13 +328,15 @@ def get_standings(league, season_year, college_division=None):
                         team["name"] = team_a_tag.text
                         team["id"] = int(c.split("-")[2])
                         standings["conferences"][conference_name]["divisions"][division]["teams"].append(team)
-    elif league in ["nfl","ncf","nba","mlb"]:
+    elif league in ["nfl","ncf","nba","mlb","wnba"]:
         if college_division:
             valid_college_divisions = ["fbs", "fcs", "d2", "d3"]
             if college_division in valid_college_divisions:
                 url = "{}/{}/standings/_/view/{}/season/{}/group/division".format(BASE_URL, league, college_division, season_year)
             else:
                 raise ValueError("College division must be none or {}".format(",".join(valid_college_divisions)))
+        elif league in ["wnba"]:
+            url = "{}/{}/standings/_/season/{}/group/conference".format(BASE_URL, league, season_year)
         else:
             url = "{}/{}/standings/_/season/{}/group/division".format(BASE_URL, league, season_year)
         print(url)
