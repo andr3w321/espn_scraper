@@ -6,14 +6,14 @@ import datetime
 import os.path
 import requests
 from bs4 import BeautifulSoup
-BASE_URL = "http://www.espn.com"
+BASE_URL = "https://www.espn.com"
 
 ## General functions
 def retry_request(url, headers={}):
     """Get a url and return the request, try it up to 3 times if it fails initially"""
     session = requests.Session()
     session.mount("http://", requests.adapters.HTTPAdapter(max_retries=3))
-    res = session.get(url=url, allow_redirects=False, headers=headers)
+    res = session.get(url=url, allow_redirects=True, headers=headers)
     session.close()
     return res
 
@@ -59,7 +59,7 @@ def get_leagues():
     return get_week_leagues() + get_date_leagues()
 
 def get_html_boxscore_leagues():
-    return ["wnba", "mlb", "nhl"]
+    return ["nhl"]
 
 def get_no_scoreboard_json_leagues():
     """ Scoreboard json isn't easily available for some leagues, have to grab the game_ids from sportscenter_api url """
@@ -77,7 +77,7 @@ def get_sport(league):
 
 ## Get urls
 def get_sportscenter_api_url(sport, league, dates):
-    return "http://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
+    return "https://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
 
 def get_date_scoreboard_url(league, date, group=None):
     """ Return a scoreboard url for a league that uses dates (nonfootball)"""
@@ -103,7 +103,7 @@ def get_week_scoreboard_url(league, season_year, season_type, week, group=None):
         raise ValueError("League must be {} to get week scoreboard url".format(get_week_leagues()))
 
 def get_game_url(url_type, league, espn_id):
-    valid_url_types = ["summary", "recap", "boxscore", "playbyplay", "conversation", "gamecast"]
+    valid_url_types = ["recap", "boxscore", "playbyplay", "conversation", "gamecast"]
     if url_type not in valid_url_types:
         raise ValueError("Unknown url_type for get_game_url. Valid url_types are {}".format(valid_url_types))
     return "{}/{}/{}?gameId={}&xhr=1".format(BASE_URL, league, url_type, espn_id)
@@ -190,7 +190,7 @@ def get_date_from_scoreboard_url(url):
 def get_data_type_from_url(url):
     """ Guess and return the data_type based on the url """
     data_type = None
-    valid_data_types = ["scoreboard", "summary", "recap", "boxscore", "playbyplay", "conversation", "gamecast"]
+    valid_data_types = ["scoreboard", "recap", "boxscore", "playbyplay", "conversation", "gamecast"]
     for valid_data_type in valid_data_types:
         if valid_data_type in url:
             data_type = valid_data_type
@@ -268,71 +268,43 @@ def get_cached(filename):
 ## Get requests
 def get_teams(league):
     """ Returns a list of teams with ids and names """
-    url = BASE_URL + "/" + league + "/teams"
-    print(url)
-    soup = get_soup(retry_request(url))
-    if league == "wnba":
-        selector = "b a"
-    else:
-        selector = "a.bi"
-    team_links = soup.select(selector)
     teams = []
-    for team_link in team_links:
-        teams.append({'id': team_link['href'].split('/')[-2], 'name': team_link.text})
+    if league == "ncf":
+        # espn's college football teams page only lists fbs
+        # need to grab teams from standings page instead if want all the fbs and fcs teams
+        for division in ["fbs","fcs-i-aa"]:
+            url = BASE_URL + "/college-football/standings/_/view/" + division
+            print(url)
+            soup = get_soup(retry_request(url))
+            selector = ".hide-mobile"
+            team_divs = soup.select(selector)
+            for team_div in team_divs:
+                teams.append({'id': team_div.find("a")['href'].split('/')[-2], 'name': team_div.text})
+    else:
+        url = BASE_URL + "/" + league + "/teams"
+        print(url)
+        soup = get_soup(retry_request(url))
+        if league == "wnba":
+            selector = "div.pl3"
+        else:
+            selector = "div.mt3"
+        team_divs = soup.select(selector)
+        for team_div in team_divs:
+            teams.append({'id': team_div.find("a")['href'].split('/')[-2], 'name': team_div.find("h2").text})
     return teams
 
 def get_standings(league, season_year, college_division=None):
     standings = {"conferences": {}}
-    if league in ["nhl"]:
-        url = "{}/{}/standings/_/year/{}".format(BASE_URL, league, season_year)
-        print(url)
-        soup = get_soup(retry_request(url))
-        standings = {"conferences": {}}
-        # espn has malformed html where they forgot to include closing </table> tags so have to parse by table rows instead of by tables
-        trs = soup.find_all("tr", class_=["stathead","colhead","oddrow","evenrow"])
-        for tr in trs:
-            if "stathead" in tr["class"]:
-                conference_name = tr.text
-                standings["conferences"][conference_name] = {"divisions": {}}
-            elif "colhead" in tr["class"]:
-                division = tr.find("td").text
-                standings["conferences"][conference_name]["divisions"][division] = {"teams": []}
-            elif "oddrow" in tr["class"] or "evenrow" in tr["class"]:
-                team = {}
-                team_a_tag = tr.find("td").find("a")
-                if team_a_tag is None:
-                    # some teams are now defunct with no espn links
-                    team["name"] = tr.find("td").text.split(" - ")[1].strip()
-                    team["abbr"] = ""
-                else:
-                    team["name"] = team_a_tag.text
-                    team["abbr"] = team_a_tag["href"].split("name/")[1].split("/")[0].upper()
-                standings["conferences"][conference_name]["divisions"][division]["teams"].append(team)
-    elif league in ["ncb","ncw"]:
-        url = "{}/{}/standings/_/year/{}".format(BASE_URL, league, season_year)
-        print(url)
-        soup = get_soup(retry_request(url))
-        standings = {"conferences": {}}
-        conference_name = "i"
-        standings["conferences"][conference_name] = {"divisions": {}}
-        divs = soup.find_all("div", class_="mod-table")
-        for div in divs:
-            division = div.find("div", class_="mod-header").find("h4").text.split("Standings")[0]
-            standings["conferences"][conference_name]["divisions"][division] = {"teams": []}
-            trs = div.find("div", class_="mod-content").find("table", class_="tablehead").find_all("tr", class_=["oddrow","evenrow"])
-            for tr in trs:
-                for c in tr["class"]:
-                    if "team" in c:
-                        team_a_tag = tr.find("td").find("a")
-                        team = {}
-                        team["name"] = team_a_tag.text
-                        team["id"] = int(c.split("-")[2])
-                        standings["conferences"][conference_name]["divisions"][division]["teams"].append(team)
-    elif league in ["nfl","ncf","nba","mlb","wnba"]:
+    if league in ["nhl","nfl","mlb","nba","wnba","ncf","ncb","ncw"]:
+        if league == "ncf" and college_division == None:
+            # default to fbs
+            college_division = "fbs"
         if college_division:
-            valid_college_divisions = ["fbs", "fcs", "d2", "d3"]
+            valid_college_divisions = ["fbs", "fcs", "fcs-i-aa", "d2", "d3"]
+            if college_division == "fcs":
+                college_division = "fcs-i-aa"
             if college_division in valid_college_divisions:
-                url = "{}/{}/standings/_/view/{}/season/{}/group/division".format(BASE_URL, league, college_division, season_year)
+                url = "{}/{}/standings/_/season/{}/view/{}".format(BASE_URL, league, season_year, college_division)
             else:
                 raise ValueError("College division must be none or {}".format(",".join(valid_college_divisions)))
         elif league in ["wnba"]:
@@ -341,22 +313,36 @@ def get_standings(league, season_year, college_division=None):
             url = "{}/{}/standings/_/season/{}/group/division".format(BASE_URL, league, season_year)
         print(url)
         soup = get_soup(retry_request(url))
-        conference_names = [x.text for x in soup.find_all("span", class_="long-caption")]
-        tables = soup.find_all("table", class_="standings")
-        for i in range(0, len(tables)):
-            standings["conferences"][conference_names[i]] = {"divisions": {}}
-            theads = tables[i].find_all("thead", class_="standings-categories")
-            for thead in theads:
-                division = thead.find("th").text
-                standings["conferences"][conference_names[i]]["divisions"][division] = {"teams": []}
-                nextSib = thead.nextSibling
-                while(nextSib and nextSib.name == "tr"):
-                    link = nextSib.find("abbr")
+        standings_divs = soup.find_all("div", class_="standings__table")
+
+        for i in range(len(standings_divs)):
+            conference_name = standings_divs[i].find("div", class_="Table__Title").text
+            standings["conferences"][conference_name] = {"divisions": {}}
+            division = "" # default blank division name
+            teams_table = standings_divs[i].find("table", class_="Table--fixed-left")
+            trs = teams_table.find_all("tr")
+            for tr in trs:
+                if "subgroup-headers" in tr["class"]:
+                    division = tr.text # replace default blank division name
+                    standings["conferences"][conference_name]["divisions"][division] = {"teams": []}
+                elif tr.text != "":
+                    if division == "" and standings["conferences"][conference_name]["divisions"] == {}:
+                        standings["conferences"][conference_name]["divisions"][division] = {"teams": []}
                     team = {}
-                    team["name"] = link["title"]
-                    team["abbr"] = link.text
-                    standings["conferences"][conference_names[i]]["divisions"][division]["teams"].append(team)
-                    nextSib = nextSib.nextSibling
+                    team_span_tag = tr.find("td", class_="Table__TD").find("span", class_="hide-mobile")
+                    team_a_tag = team_span_tag.find("a")
+                    if team_a_tag is None:
+                        # some teams are now defunct with no espn links
+                        team["name"] = team_span_tag.text.strip()
+                        team["abbr"] = ""
+                    else:
+                        team["name"] = team_a_tag.text
+                        if league in ["ncf","ncb","ncw"]:
+                            team["abbr"] = team_a_tag["href"].split("/id/")[1].split("/")[0].upper()
+                        else:
+                            team["abbr"] = team_a_tag["href"].split("/name/")[1].split("/")[0].upper()
+                    standings["conferences"][conference_name]["divisions"][division]["teams"].append(team)
+
     return standings
                 
 def get_calendar(league, date_or_season_year):

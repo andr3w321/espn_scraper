@@ -36,10 +36,10 @@ print(json_data['gamepackageJSON']['drives']['previous'][0]['plays'][0]['text'])
 # a few requests will return a beautiful soup objects instead of json
 url = espn.get_game_url("boxscore", "nhl", 400885533)
 soup = espn.get_url(url)
-away_team = soup.select('.team-info a')[0].text
-home_team = soup.select('.team-info a')[1].text
-away_score = soup.select('.team-info .gp-awayScore')[0].text
-home_score = soup.select('.team-info .gp-homeScore')[0].text
+away_team = soup.select('.ScoreCell__TeamName--displayName')[0].text
+home_team = soup.select('.ScoreCell__TeamName--displayName')[1].text
+away_score = soup.select('.h2')[0].text
+home_score = soup.select('.h2')[1].text
 print(away_team, away_score, home_team, home_score)
 
 # you may have better luck parsing their gamecast data for boxscore or playbyplay

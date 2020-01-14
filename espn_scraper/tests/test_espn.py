@@ -26,15 +26,15 @@ class TestEspn(TestCase):
     def test_get_num_nba_teams(self):
         self.assertEqual(len(espn.get_teams("nba")), 30)
     def test_get_num_ncf_teams(self):
-        self.assertEqual(len(espn.get_teams("ncb")), 254)
-    def test_get_num_ncf_teams(self):
-        self.assertEqual(len(espn.get_teams("ncb")), 351)
+        self.assertEqual(len(espn.get_teams("ncf")), 256)
+    def test_get_num_ncb_teams(self):
+        self.assertEqual(len(espn.get_teams("ncb")), 353)
     def test_get_num_ncw_teams(self):
         assert(len(espn.get_teams("ncw")) > 300)
     def test_get_num_wnba_teams(self):
         self.assertEqual(len(espn.get_teams("wnba")), 12)
     def test_get_num_nhl_teams(self):
-        self.assertEqual(len(espn.get_teams("nhl")), 30)
+        self.assertEqual(len(espn.get_teams("nhl")), 31)
 
     # scoreboards
     def test_nfl_scoreboard(self):
@@ -70,8 +70,8 @@ class TestEspn(TestCase):
 
     # scoreboards for a year
     def test_get_all_2016_nfl_scoreboard_urls(self):
-        scoreboards = scoreboards = espn.get_all_scoreboard_urls("nfl", 2016)
-        self.assertEqual(len(scoreboards), 27)
+        scoreboards = espn.get_all_scoreboard_urls("nfl", 2016)
+        self.assertEqual(len(scoreboards), 28)
 
     # boxscores
     def test_nfl_boxscore(self):
@@ -79,11 +79,7 @@ class TestEspn(TestCase):
     def test_nba_boxscore(self):
         boxscore_helper(self, "nba", 400900498)
     def test_mlb_boxscore(self):
-        data = espn.get_url(espn.get_game_url("boxscore", "mlb", 370328119))
-        away_score = int(data.select('.team-info span')[0].text.strip())
-        home_score = int(data.select('.team-info span')[1].text.strip())
-        self.assertEqual(away_score, 1)
-        self.assertEqual(home_score, 3)
+        boxscore_helper(self, "mlb", 370328119)
     def test_ncb_boxscore(self):
         boxscore_helper(self, "ncb", 400947330)
     def test_ncf_boxscore(self):
@@ -91,15 +87,11 @@ class TestEspn(TestCase):
     def test_ncw_boxscore(self):
         boxscore_helper(self, "ncw", 400947271)
     def test_wnba_boxscore(self):
-        data = espn.get_url(espn.get_game_url("boxscore", "wnba", 400910431))
-        away_score = int(data.select('.team-info span')[0].text.strip())
-        home_score = int(data.select('.team-info span')[1].text.strip())
-        self.assertEqual(away_score, 85)
-        self.assertEqual(home_score, 94)
+        boxscore_helper(self, "wnba", 400910431)
     def test_nhl_boxscore(self):
         data = espn.get_url(espn.get_game_url("boxscore", "nhl", 400885533))
-        away_score = int(data.select('.team-info span')[0].text.strip())
-        home_score = int(data.select('.team-info span')[1].text.strip())
+        away_score = int(data.select('.h2')[0].text.strip())
+        home_score = int(data.select('.h2')[1].text.strip())
         self.assertEqual(away_score, 5)
         self.assertEqual(home_score, 1)
 
@@ -115,8 +107,7 @@ class TestEspn(TestCase):
     def test_ncb_2016_standings(self):
         standings_helper(self, "ncb", 2016, 351)
     def test_ncw_2016_standings(self):
-        # includes 64 NCAA tournament standings
-        standings_helper(self, "ncw", 2016, 349 + 64)
+        standings_helper(self, "ncw", 2016, 349)
     def test_wnba_2016_standings(self):
         standings_helper(self, "wnba", 2016, 12)
     def test_nhl_2016_standings(self):
