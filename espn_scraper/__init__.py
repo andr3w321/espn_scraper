@@ -7,6 +7,7 @@ import os.path
 import requests
 from bs4 import BeautifulSoup
 BASE_URL = "https://www.espn.com"
+QUERY_STRING = "_xhr=1" # see https://gist.github.com/akeaswaran/b48b02f1c94f873c6655e7129910fc3b?permalink_comment_id=4319893#gistcomment-4319893
 
 ## General functions
 def retry_request(url, headers={}):
@@ -86,9 +87,9 @@ def get_date_scoreboard_url(league, date, group=None):
             return "{}/{}/scoreboard?date={}".format(BASE_URL, league, date)
         else:
             if group == None:
-                return "{}/{}/scoreboard/_/date/{}?xhr=1".format(BASE_URL, league, date)
+                return "{}/{}/scoreboard/_/date/{}?{}".format(BASE_URL, league, date, QUERY_STRING)
             else:
-                return "{}/{}/scoreboard/_/group/{}/date/{}?xhr=1".format(BASE_URL, league, group, date)
+                return "{}/{}/scoreboard/_/group/{}/date/{}?{}".format(BASE_URL, league, group, date, QUERY_STRING)
     else:
         raise ValueError("League must be {} to get date scoreboard url".format(get_date_leagues()))
 
@@ -96,9 +97,9 @@ def get_week_scoreboard_url(league, season_year, season_type, week, group=None):
     """ Return a scoreboard url for a league that uses weeks (football)"""
     if league in get_week_leagues():
         if group == None:
-            return "{}/{}/scoreboard/_/year/{}/seasontype/{}/week/{}?xhr=1".format(BASE_URL, league, season_year, season_type, week)
+            return "{}/{}/scoreboard/_/year/{}/seasontype/{}/week/{}?{}".format(BASE_URL, league, season_year, season_type, week, QUERY_STRING)
         else:
-            return "{}/{}/scoreboard/_/group/{}/year/{}/seasontype/{}/week/{}?xhr=1".format(BASE_URL, league, group, season_year, season_type, week)
+            return "{}/{}/scoreboard/_/group/{}/year/{}/seasontype/{}/week/{}?{}".format(BASE_URL, league, group, season_year, season_type, week, QUERY_STRING)
     else:
         raise ValueError("League must be {} to get week scoreboard url".format(get_week_leagues()))
 
@@ -106,7 +107,7 @@ def get_game_url(url_type, league, espn_id):
     valid_url_types = ["recap", "boxscore", "playbyplay", "conversation", "gamecast"]
     if url_type not in valid_url_types:
         raise ValueError("Unknown url_type for get_game_url. Valid url_types are {}".format(valid_url_types))
-    return "{}/{}/{}?gameId={}&xhr=1".format(BASE_URL, league, url_type, espn_id)
+    return "{}/{}/{}?gameId={}&{}".format(BASE_URL, league, url_type, espn_id, QUERY_STRING)
 
 def get_current_scoreboard_urls(league, offset=0):
     """ Return a list of the current scoreboard urls for a league 
