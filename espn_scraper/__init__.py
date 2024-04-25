@@ -7,10 +7,13 @@ import os.path
 import requests
 from bs4 import BeautifulSoup
 BASE_URL = "https://www.espn.com"
-QUERY_STRING = "_xhr=1" # see https://gist.github.com/akeaswaran/b48b02f1c94f873c6655e7129910fc3b?permalink_comment_id=4319893#gistcomment-4319893
+QUERY_STRING = "_xhr=1"
+#ESPN seems to be blocking requests with default blank headers
+DEFAULT_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"}
+API_v2_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports"
 
 ## General functions
-def retry_request(url, headers={}):
+def retry_request(url, headers=DEFAULT_HEADERS):
     """Get a url and return the request, try it up to 3 times if it fails initially"""
     session = requests.Session()
     session.mount("http://", requests.adapters.HTTPAdapter(max_retries=3))
@@ -21,7 +24,7 @@ def retry_request(url, headers={}):
 def get_soup(res):
     return BeautifulSoup(res.text, "lxml")
 
-def get_new_json(url, headers={}):
+def get_new_json(url, headers=DEFAULT_HEADERS):
     print(url)
     res = retry_request(url, headers)
     if res.status_code == 200:
@@ -30,7 +33,7 @@ def get_new_json(url, headers={}):
         print("ERROR:", res.status_code)
         return {"error_code": res.status_code, "error_msg": "URL Error"}
 
-def get_new_html_soup(url, headers={}):
+def get_new_html_soup(url, headers=DEFAULT_HEADERS):
     print(url)
     res = retry_request(url, headers)
     if res.status_code == 200:
@@ -42,6 +45,15 @@ def get_new_html_soup(url, headers={}):
 ## Get constants
 def get_date_leagues():
     return ["mlb","nba","ncb","ncw","wnba","nhl"]
+
+def longify_league(league):
+    if league == "ncb":
+        league = "mens-college-basketball"
+    elif league == "ncw":
+        league = "womens-college-basketball"
+    elif league == "ncf":
+        league = "college-football"
+    return league
 
 def get_week_leagues():
     return ["nfl","ncf"]
@@ -59,9 +71,6 @@ def get_leagues():
     """ Return a list of supported leagues """
     return get_week_leagues() + get_date_leagues()
 
-def get_html_boxscore_leagues():
-    return ["nhl"]
-
 def get_no_scoreboard_json_leagues():
     """ Scoreboard json isn't easily available for some leagues, have to grab the game_ids from sportscenter_api url """
     return ["wnba", "nhl"]
@@ -77,31 +86,44 @@ def get_sport(league):
         return "hockey"
 
 ## Get urls
-def get_sportscenter_api_url(sport, league, dates):
+def get_sportscenter_api_url(league, dates, sport=None):
+    """ Alternative API endpoint """
+    if sport == None:
+        sport = get_sport(league)
     return "https://sportscenter.api.espn.com/apis/v1/events?sport={}&league={}&dates={}".format(sport, league, dates)
 
-def get_date_scoreboard_url(league, date, group=None):
-    """ Return a scoreboard url for a league that uses dates (nonfootball)"""
-    if league in get_date_leagues():
-        if league == "nhl":
-            return "{}/{}/scoreboard?date={}".format(BASE_URL, league, date)
-        else:
-            if group == None:
-                return "{}/{}/scoreboard/_/date/{}?{}".format(BASE_URL, league, date, QUERY_STRING)
-            else:
-                return "{}/{}/scoreboard/_/group/{}/date/{}?{}".format(BASE_URL, league, group, date, QUERY_STRING)
-    else:
-        raise ValueError("League must be {} to get date scoreboard url".format(get_date_leagues()))
+def get_date_scoreboard_url(league, dates, groups=None, sport=None, limit=None):
+    """ Return a scoreboard url for a league that uses dates (nonfootball, but function also works for football)"""
+    if sport == None:
+        sport = get_sport(league)
+    league = longify_league(league)
+    url = "{}/{}/{}/scoreboard?dates={}".format(API_v2_BASE_URL, sport, league, dates)
+    if groups !=None:
+        if limit == None:
+            limit = 1000
+        url+= "&groups={}".format(groups)
+    if limit != None:
+        url += "&limit={}".format(limit)
+    return url
 
-def get_week_scoreboard_url(league, season_year, season_type, week, group=None):
-    """ Return a scoreboard url for a league that uses weeks (football)"""
-    if league in get_week_leagues():
-        if group == None:
-            return "{}/{}/scoreboard/_/year/{}/seasontype/{}/week/{}?{}".format(BASE_URL, league, season_year, season_type, week, QUERY_STRING)
-        else:
-            return "{}/{}/scoreboard/_/group/{}/year/{}/seasontype/{}/week/{}?{}".format(BASE_URL, league, group, season_year, season_type, week, QUERY_STRING)
-    else:
-        raise ValueError("League must be {} to get week scoreboard url".format(get_week_leagues()))
+def get_week_scoreboard_url(league, season_year, season_type=None, week=None, groups=None, sport=None):
+    """ Return a scoreboard url for a league that uses weeks (football)
+    Example urls
+    By year: https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?limit=1000&dates=2022
+    By year, seasontype, week: https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=2022&seasontype=2&week=1
+    By date range: https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20200901-20210228
+    By date: https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=20200901"""
+
+    if sport == None:
+        sport = get_sport(league)
+    league = longify_league(league)
+    url = "{}/{}/{}/scoreboard?dates={}".format(API_v2_BASE_URL, sport, league, season_year)
+    if season_type != None:
+        url += "&seasontype={}".format(season_type)
+    if week != None:
+        url += "&week={}".format(week)
+    #TODO implement groups?
+    return url
 
 def get_game_url(url_type, league, espn_id):
     valid_url_types = ["recap", "boxscore", "playbyplay", "conversation", "gamecast"]
@@ -231,13 +253,6 @@ def get_season_start_end_datetimes(league, season_year):
     else:
         raise ValueError("League must be {} to get season start and end datetimes".format(get_date_leagues()))
 
-def create_filename_ext(league, data_type):
-    """ Get a filename extension (either .html or .json depending on league and data_type) """
-    if league in get_html_boxscore_leagues() and data_type == "boxscore":
-        return "html"
-    else:
-        return "json"
-
 def get_filename(cached_json_path, league, data_type, url):
     """ Build a full filename with directories for given league, data_type and url"""
     # add slash if necessary to cached_json_path
@@ -249,7 +264,7 @@ def get_filename(cached_json_path, league, data_type, url):
         os.makedirs(dir_path)
     # create filename with / replaced with |
     filename = dir_path + url.replace('/','|')
-    ext = "." + create_filename_ext(league, data_type)
+    ext = ".json"
     if filename.endswith(ext) == False:
         filename = filename + ext
     return filename
@@ -271,9 +286,9 @@ def get_teams(league):
     """ Returns a list of teams with ids and names """
     teams = []
     if league == "ncf":
-        # espn's college football teams page only lists fbs
+        # espn's college football teams page only lists fbs (blank division)
         # need to grab teams from standings page instead if want all the fbs and fcs teams
-        for division in ["fbs","fcs-i-aa"]:
+        for division in ["","fcs-i-aa"]:
             url = BASE_URL + "/college-football/standings/_/view/" + division
             print(url)
             soup = get_soup(retry_request(url))
@@ -299,7 +314,7 @@ def get_standings(league, season_year, college_division=None):
     if league in ["nhl","nfl","mlb","nba","wnba","ncf","ncb","ncw"]:
         if league == "ncf" and college_division == None:
             # default to fbs
-            college_division = "fbs"
+            college_division = ""
         if college_division:
             valid_college_divisions = ["fbs", "fcs", "fcs-i-aa", "d2", "d3"]
             if college_division == "fcs":
@@ -312,6 +327,7 @@ def get_standings(league, season_year, college_division=None):
             url = "{}/{}/standings/_/season/{}/group/conference".format(BASE_URL, league, season_year)
         else:
             url = "{}/{}/standings/_/season/{}/group/division".format(BASE_URL, league, season_year)
+
         print(url)
         soup = get_soup(retry_request(url))
         standings_divs = soup.find_all("div", class_="standings__table")
@@ -353,19 +369,21 @@ def get_calendar(league, date_or_season_year):
     elif league in get_date_leagues():
         url = get_date_scoreboard_url(league, date_or_season_year)
     # TODO use cached replies for older urls
-    return get_url(url)['content']['calendar']
+    return get_url(url)['leagues'][0]['calendar']
 
 def get_url(url, cached_path=None):
     """ Retrieve an ESPN JSON data or HTML BeautifulSoup, either from cache or make new request """
     data_type = get_data_type_from_url(url)
     league = get_league_from_url(url)
+    """
     if data_type == "scoreboard":
         # for wnba and nhl we'll use a different api to retrieve game_ids and basic game data
         if league in get_no_scoreboard_json_leagues():
             url = get_sportscenter_api_url(get_sport(league), league, get_date_from_scoreboard_url(url))
+    """
     return get_cached_url(url, league, data_type, cached_path)
 
-def get_cached_url(url, league, data_type, cached_path, headers={}):
+def get_cached_url(url, league, data_type, cached_path, headers=DEFAULT_HEADERS):
     """ get_url helper if want to specify the league and datatype (for non espn.com links) """
     if cached_path:
         filename = get_filename(cached_path, league, data_type, url)
@@ -373,17 +391,11 @@ def get_cached_url(url, league, data_type, cached_path, headers={}):
     else:
         data = None
     if data == None:
-        ext = create_filename_ext(league, data_type)
-        if ext == "json":
-            data = get_new_json(url, headers)
-            # dont cache if got an ESPN internal 500 error
-            if cached_path and "error_code" not in data:
-                with open(filename, 'w') as f:
-                    json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
-        elif ext == "html":
-            data = get_new_html_soup(url, headers)
-            if cached_path and "error_code" not in data:
-                with open(filename, 'w') as f:
-                    f.write(data.prettify())
+        ext = "json"
+        data = get_new_json(url, headers)
+        # dont cache if got an ESPN internal 500 error
+        if cached_path and "error_code" not in data:
+            with open(filename, 'w') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
     return data
 
