@@ -1,5 +1,5 @@
 #update setup.py to new version
-python setup.py sdist bdist_wheel --universal
+python3 setup.py sdist bdist_wheel --universal
 twine upload dist/*
 
 #test code
