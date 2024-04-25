@@ -1,6 +1,6 @@
 #update setup.py to new version
 python3 setup.py sdist bdist_wheel --universal
-twine upload dist/*
+twine upload --repository espn_scraper dist/*
 
 #test code
 tox r
