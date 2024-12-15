@@ -10,3 +10,5 @@
 *.ipynb
 *.swp
 /cached_json
+/cached_data
+/unusedgames/
