@@ -15,7 +15,7 @@ for league in leagues:
 scoreboard_urls = espn.get_all_scoreboard_urls("nfl", 2016)
 for scoreboard_url in scoreboard_urls:
     data = espn.get_url(scoreboard_url, cached_path="cached_json")
-    for event in data['content']['sbData']['events']:
+    for event in data['events']:
         if event['season']['type'] == 3:
             print(event['season']['type'],
                   event['season']['year'],
@@ -26,21 +26,24 @@ for scoreboard_url in scoreboard_urls:
 
 url = espn.get_game_url("boxscore", "nba", 400900498)
 json_data = espn.get_url(url)
-print(json_data['gamepackageJSON']['boxscore']['teams'][0]['team']['name'])
-ppjson(json_data['gamepackageJSON']['boxscore']['teams'][0]['statistics'][0])
+#ppjson(json_data) # print full long json
+
+print(json_data['page']['content']['gamepackage']['bxscr'][0]['tm']['dspNm'])
+ppjson(json_data['page']['content']['gamepackage']['bxscr'][0]['stats'][0])
 
 url = espn.get_game_url("playbyplay", "ncf", 400868977)
 json_data = espn.get_url(url)
-print(json_data['gamepackageJSON']['drives']['previous'][0]['plays'][0]['text'])
+for play_number, play in enumerate(json_data['page']['content']['gamepackage']['allPlys']):
+    if 'headline' not in play:
+        continue
+    print(play_number, play['teamName'], play['headline'], play['description'])
 
-# a few requests will return a beautiful soup objects instead of json
+
+# NHL example
 url = espn.get_game_url("boxscore", "nhl", 400885533)
-soup = espn.get_url(url)
-away_team = soup.select('.ScoreCell__TeamName--displayName')[0].text
-home_team = soup.select('.ScoreCell__TeamName--displayName')[1].text
-away_score = soup.select('.h2')[0].text
-home_score = soup.select('.h2')[1].text
+json_data = espn.get_url(url)
+away_team = json_data['page']['content']['gamepackage']['bxscr'][0]['tm']['abbrev']
+home_team = json_data['page']['content']['gamepackage']['bxscr'][1]['tm']['abbrev']
+away_score = json_data['page']['content']['gamepackage']['scrSumm']['lnscrs']['awy'][3]
+home_score = json_data['page']['content']['gamepackage']['scrSumm']['lnscrs']['hme'][3]
 print(away_team, away_score, home_team, home_score)
-
-# you may have better luck parsing their gamecast data for boxscore or playbyplay
-gamecast_url = espn.get_game_url("gamecast", "nhl", 400885533)
