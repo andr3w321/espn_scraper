@@ -1,4 +1,4 @@
-This library will scrape espn.com scoreboards, boxscores, playbyplays for most sports NFL, MLB, NBA, NCAAF, NCAAB, NCAAW, WNBA, NHL.  It will optionally save the data for quick lookup later.  All the functions can be found in `espn_scaper/__init__.py`  Some example usage can be found in example.py or the below README
+This library will scrape espn.com scoreboards, boxscores, playbyplays for most sports NFL, MLB, NBA, NCAAF, NCAAB, NCAAW, WNBA, NHL.  It will optionally save the data for quick lookup later.  All the functions can be found in [`espn_scaper/__init__.py`](https://github.com/andr3w321/espn_scraper/blob/master/espn_scraper/__init__.py)  Some example usage can be found in example.py or the below README
 
 Other ESPN API endpoints can be found at https://gist.github.com/nntrn/ee26cb2a0716de0947a0a4e9a157bc1c
 
