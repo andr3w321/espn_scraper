@@ -234,7 +234,8 @@ def get_filename_ext(filename):
 def get_season_start_end_datetimes_helper(url):
     # TODO use cached replies if scoreboard url is older than 1 year
     scoreboard = get_url(url)
-    return parser.parse(scoreboard['content']['sbData']['leagues'][0]['calendarStartDate']), parser.parse(scoreboard['content']['sbData']['leagues'][0]['calendarEndDate'])
+    league = scoreboard['leagues'][0]
+    return parser.parse(league['calendarStartDate']), parser.parse(league['calendarEndDate'])
 
 def get_season_start_end_datetimes(league, season_year):
     """ Guess a random date in a leagues season and return its calendar start and end dates, only non football adheres to this format"""
